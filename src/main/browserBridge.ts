@@ -240,6 +240,19 @@ async function add(
   ) {
     return keep('The download URL returned HTML instead of the browser attachment; keep the browser download')
   }
+  // The browser's filename may come from a POST response, while a GET to the same URL
+  // returns a short text/plain or JSON error. Avoid replacing the browser's attachment
+  // with that error response. Do not reject actual text downloads.
+  if (
+    probe.kind === 'http' &&
+    request.fileName &&
+    /\\.(?:zip|7z|rar|tar|gz|xz|bz2|iso|exe|msi|apk|pdf)$/i.test(request.fileName) &&
+    /^(?:text\\/plain|application\\/(?:json|problem\\+json))(?:\\s*;|$)/i.test(probe.contentType ?? '') &&
+    probe.totalBytes !== null &&
+    probe.totalBytes < 16 * 1024
+  ) {
+    return keep('The download URL returned a small text/error response; keep the browser download')
+  }
   if (
     probe.kind === 'http' &&
     request.minBytes !== undefined &&
