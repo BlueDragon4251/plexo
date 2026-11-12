@@ -8,31 +8,6 @@ const MENU_ID = 'download-with-plexo'
 const CHECK_ALARM = 'check-plexo'
 
 const openedAt = new Map<number, number>()
-// Downloads API does not expose the request method. Track recent POST navigations so we
-// never replace their browser response by replaying the URL as GET. This is deliberately a
-// conservative fallback, not POST transfer support.
-const POST_WINDOW_MS = 2 * 60_000
-const recentPosts = new Map<string, number>()
-function postKey(tabId: number, url: string): string {
-  return `${tabId}:${url}`
-}
-function wasRecentPost(item: chrome.downloads.DownloadItem): boolean {
-  const now = Date.now()
-  for (const [key, time] of recentPosts) {
-    if (now - time > POST_WINDOW_MS) recentPosts.delete(key)
-  }
-  return [item.url, item.finalUrl].some(
-    (url) => !!url && (recentPosts.get(postKey(item.tabId, url)) ?? 0) > now - POST_WINDOW_MS
-  )
-}
-api.webRequest.onBeforeRequest.addListener(
-  (details) => {
-    if (details.method !== 'POST' || details.tabId < 0) return
-    recentPosts.set(postKey(details.tabId, details.url), Date.now())
-  },
-  { urls: ['http://*/*', 'https://*/*'], types: ['main_frame', 'sub_frame', 'other'] }
-)
-
 
 const ICON = { 16: 'icons/icon-16.png', 32: 'icons/icon-32.png' }
 // A greyed-out icon rather than a badge: the browser draws badges too small to notice.
@@ -58,8 +33,6 @@ async function capture(item: chrome.downloads.DownloadItem): Promise<boolean> {
   const url = item.finalUrl || item.url
   // blob: and data: downloads exist only inside the browser.
   if (!settings.capture || !/^https?:/i.test(url)) return false
-  // The original POST body is unavailable here; leave its attachment in the browser.
-  if (wasRecentPost(item)) return false
   if (excluded(settings.sites, [item.url, item.finalUrl, item.referrer])) return false
 
   const request: BridgeAddRequest = {
