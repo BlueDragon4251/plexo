@@ -2,12 +2,26 @@ import { api } from './api'
 import type { BridgeAddRequest } from '../../src/shared/browserBridge'
 import { browserContext, confirm, reach, send, storeOf, wake, type Reach } from './plexo'
 import { excluded, loadSettings } from './settings'
+import { RecentPostRequests } from '../../src/shared/recentPostRequests'
 
 const MENU_ID = 'download-with-plexo'
 // Plexo can't tell the extension it has quit, so the toolbar icon checks on a timer.
 const CHECK_ALARM = 'check-plexo'
 
 const openedAt = new Map<number, number>()
+const recentPosts = new RecentPostRequests()
+
+// Chrome and Firefox both expose the request method through webRequest, not downloads.
+// Do NOT ask for requestBody: no credentials or POST form contents need to be inspected
+// merely to avoid corrupting a download. An MV3 worker restart may lose these samples;
+// the desktop bridge also checks for invalid HTML/text responses as a backstop.
+api.webRequest.onBeforeRequest.addListener(
+  (details) => {
+    if (details.method === 'POST') recentPosts.note(details.url)
+  },
+  { urls: ['http://*/*', 'https://*/*'] }
+)
+
 
 const ICON = { 16: 'icons/icon-16.png', 32: 'icons/icon-32.png' }
 // A greyed-out icon rather than a badge: the browser draws badges too small to notice.
@@ -31,6 +45,10 @@ async function showState(reached?: Reach): Promise<void> {
 async function capture(item: chrome.downloads.DownloadItem): Promise<boolean> {
   const settings = await loadSettings()
   const url = item.finalUrl || item.url
+  // Replaying a POST attachment as GET can turn a 200 MiB ZIP into an HTML/error page.
+  // The downloads API offers no request method, so treat matching recent POST URLs as
+  // browser-only. This is a safe fallback, not yet support for streaming POSTs to Plexo.
+  if (recentPosts.shouldKeepInBrowser(item)) return false
   // blob: and data: downloads exist only inside the browser.
   if (!settings.capture || !/^https?:/i.test(url)) return false
   if (excluded(settings.sites, [item.url, item.finalUrl, item.referrer])) return false
