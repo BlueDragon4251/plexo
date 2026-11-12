@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto'
+import { isLikelyReplayedError } from '../shared/replayedAttachment'
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http'
 import { app } from 'electron'
 import {
@@ -229,29 +230,12 @@ async function add(
   // here on nothing awaits, so the answer can't come after the extension has stopped waiting.
   if (res.writableEnded || res.destroyed) return
   if (typeof probe === 'string') return keep(probe)
-  // A browser attachment may have been produced by a POST request. Replaying only its URL
-  // can return an HTML form/error page instead of the original file. Never cancel the browser's
-  // valid download in that case; the extension cannot currently forward POST request bodies.
+  // Never replace the browser's binary attachment with a GET-replayed error page.
   if (
     probe.kind === 'http' &&
-    request.fileName &&
-    /\.(?:zip|7z|rar|tar|gz|xz|bz2|iso|exe|msi|apk|pdf)$/i.test(request.fileName) &&
-    /^text\/html(?:\s*;|$)/i.test(probe.contentType ?? '')
+    isLikelyReplayedError(request.fileName, probe.contentType, probe.totalBytes)
   ) {
-    return keep('The download URL returned HTML instead of the browser attachment; keep the browser download')
-  }
-  // The browser's filename may come from a POST response, while a GET to the same URL
-  // returns a short text/plain or JSON error. Avoid replacing the browser's attachment
-  // with that error response. Do not reject actual text downloads.
-  if (
-    probe.kind === 'http' &&
-    request.fileName &&
-    /\.(?:zip|7z|rar|tar|gz|xz|bz2|iso|exe|msi|apk|pdf)$/i.test(request.fileName) &&
-    /^(?:text\/plain|application\/(?:json|problem\+json))(?:\s*;|$)/i.test(probe.contentType ?? '') &&
-    probe.totalBytes !== null &&
-    probe.totalBytes < 16 * 1024
-  ) {
-    return keep('The download URL returned a small text/error response; keep the browser download')
+    return keep('The URL returned an HTML/text error rather than the browser attachment')
   }
   if (
     probe.kind === 'http' &&
