@@ -41,6 +41,8 @@
 
 https://github.com/user-attachments/assets/e57728f4-fb63-441f-839c-174eef954b17
 
+> **Fork development handoff (BlueDragon4251):** Work on POST-backed browser downloads is tracked in [POST download handoff](docs/POST_DOWNLOAD_HANDOFF.md). Coding agents should also read [AGENTS.md](AGENTS.md). The implementation is in progress on `feat/post-download-support`; POST transfer is not finished.
+
 ## Features
 
 ### Multi-network downloads
