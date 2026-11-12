@@ -246,8 +246,8 @@ async function add(
   if (
     probe.kind === 'http' &&
     request.fileName &&
-    /\\.(?:zip|7z|rar|tar|gz|xz|bz2|iso|exe|msi|apk|pdf)$/i.test(request.fileName) &&
-    /^(?:text\\/plain|application\\/(?:json|problem\\+json))(?:\\s*;|$)/i.test(probe.contentType ?? '') &&
+    /\.(?:zip|7z|rar|tar|gz|xz|bz2|iso|exe|msi|apk|pdf)$/i.test(request.fileName) &&
+    /^(?:text\/plain|application\/(?:json|problem\+json))(?:\s*;|$)/i.test(probe.contentType ?? '') &&
     probe.totalBytes !== null &&
     probe.totalBytes < 16 * 1024
   ) {
