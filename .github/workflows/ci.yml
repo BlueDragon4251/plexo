@@ -38,6 +38,9 @@ jobs:
       - name: Typecheck
         run: npm run typecheck
 
+      - name: POST download regression tests
+        run: npm run test:post-capture
+
       - name: Check formatting
         run: npm run format:check
 
