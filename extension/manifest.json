@@ -20,6 +20,6 @@
     }
   },
   "options_ui": { "page": "options.html", "open_in_tab": true },
-  "permissions": ["alarms", "downloads", "contextMenus", "cookies", "webRequest", "storage", "tabs"],
+  "permissions": ["alarms", "downloads", "contextMenus", "cookies", "storage", "tabs"],
   "host_permissions": ["<all_urls>"]
 }
