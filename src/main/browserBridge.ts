@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto'
+import { isLikelyReplayedError } from '../shared/replayedAttachment'
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http'
 import { app } from 'electron'
 import {
@@ -229,6 +230,13 @@ async function add(
   // here on nothing awaits, so the answer can't come after the extension has stopped waiting.
   if (res.writableEnded || res.destroyed) return
   if (typeof probe === 'string') return keep(probe)
+  // Never replace the browser's binary attachment with a GET-replayed error page.
+  if (
+    probe.kind === 'http' &&
+    isLikelyReplayedError(request.fileName, probe.contentType, probe.totalBytes)
+  ) {
+    return keep('The URL returned an HTML/text error rather than the browser attachment')
+  }
   if (
     probe.kind === 'http' &&
     request.minBytes !== undefined &&
