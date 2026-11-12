@@ -229,6 +229,17 @@ async function add(
   // here on nothing awaits, so the answer can't come after the extension has stopped waiting.
   if (res.writableEnded || res.destroyed) return
   if (typeof probe === 'string') return keep(probe)
+  // A browser attachment may have been produced by a POST request. Replaying only its URL
+  // can return an HTML form/error page instead of the original file. Never cancel the browser's
+  // valid download in that case; the extension cannot currently forward POST request bodies.
+  if (
+    probe.kind === 'http' &&
+    request.fileName &&
+    /\.(?:zip|7z|rar|tar|gz|xz|bz2|iso|exe|msi|apk|pdf)$/i.test(request.fileName) &&
+    /^text\/html(?:\s*;|$)/i.test(probe.contentType ?? '')
+  ) {
+    return keep('The download URL returned HTML instead of the browser attachment; keep the browser download')
+  }
   if (
     probe.kind === 'http' &&
     request.minBytes !== undefined &&
